@@ -46,18 +46,46 @@
 
 环境:WSL2 Ubuntu 24.04,NDK r27c,离线编译工具链。
 
-```bash
-# 依赖
-bash setup_deps.sh
-bash setup_cross.sh          # 交叉编译工具链
-bash setup_rust.sh
-bash install_drm.sh
-bash install_glslang.sh
-bash install_spirvtools.sh
+### 一键构建(推荐)
 
-# 构建(debug 带日志 / release 优化)
-bash build_debug.sh          # -> android-hal-debug/vulkan.mali.so (121MB)
-bash build_diag.sh           # -> android-hal/vulkan.mali.so (release, ~19MB)
+仓库根目录的 `build.sh` 自动完成:安装依赖 → 下载 NDK → 克隆基础 Mesa 源码
+(funnymdzz/mesa @ `6598829019c`) → 应用补丁 → 构建离线编译器 → 交叉编译
+Android Vulkan HAL → 产出 `driver/vulkan.mali.so`。
+
+```bash
+bash build.sh            # release (默认)
+bash build.sh debug      # debug (带日志)
+```
+
+产物在 `driver/vulkan.mali.so`。
+
+### 手动构建
+
+```bash
+# 1. 系统依赖
+sudo apt install -y meson ninja-build python3-pip clang llvm-18-dev \
+  libclang-18-dev spirv-tools glslang-tools rustc cargo libdrm-dev
+rustup target add aarch64-linux-android
+
+# 2. NDK r27c
+wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
+unzip android-ndk-r27c-linux.zip
+
+# 3. Mesa 源码 + 补丁
+git clone https://github.com/funnymdzz/mesa.git ~/mesa
+cd ~/mesa && git checkout 6598829019c
+git apply <repo>/patches/panvk_mtk.patch
+
+# 4. 离线编译器
+meson setup build-compiler -Dprefix=$HOME/mesa-compiler -Dbuildtype=release \
+  -Dplatforms= -Dgallium-drivers= -Dvulkan-drivers= -Dmesa-clc=enabled \
+  -Dinstall-mesa-clc=true -Dtools=panfrost -Dprecomp-compiler=enabled \
+  -Dinstall-precomp-compiler=true
+meson install -C build-compiler
+
+# 5. Android HAL(参照 build.sh 中的 meson setup 参数)
+meson setup build-kbase-android --cross-file <android-kbase.ini> ... 
+meson compile -C build-kbase-android
 ```
 
 ## 部署
