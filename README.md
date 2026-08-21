@@ -103,7 +103,7 @@ adb reboot
 
 ## 启用 Vulkan HWUI
 
-KernelSU 模块 `hwui_use_vulkan`(system.prop):
+KernelSU 模块 `hwui_use_vulkan`(system.prop,见 `config/system.prop`):
 
 ```
 debug.hwui.renderer=skiavk
@@ -111,10 +111,31 @@ debug.renderengine.backend=skiagl    # SF 合成用 GL(Mali blob 原生解码 AF
 debug.renderengine.vulkan=false
 debug.mesa.log.level=debug
 debug.mesa.vk.log=1
+# kbase DVFS 保持 MTK 默认
+debug.mesa.panvk.kbase.dvfs=none
 ```
 
 关键:SF RenderEngine 用 **GL(skiagl)** 读 AFBC 层缓冲(Mali blob 原生支持),
 HWUI 用 **Vulkan(skiavk)** 渲染 —— 二者配合避免 panvk 合成崩溃。
+
+## GPU 调速器(DVFS)
+
+本机 GPU 默认使用 **MTK 私有 DVFS**(`mtk_gpufreq_mt6895` + SSPM/GPUEB + GED
+frame-based DVFS),非标准 cpufreq governor。
+
+驱动支持 `debug.mesa.panvk.kbase.dvfs`(= 环境变量 `PANVK_KBASE_DVFS`)控制:
+
+| 值 | 行为 |
+|---|---|
+| `none`(默认) | 不动,保持 MTK 出厂 DVFS |
+| `auto` | kbase `quickstep_use_mcu`(不可用则 `capacity_use_mcu`),范围 min-max |
+| `default` | kbase `quickstep` |
+| `max` | 锁定最高频率 |
+| `<kHz>` | 锁定指定频率 |
+
+写路径:`/sys/class/misc/mali0/device/governor`。
+
+> 若出现 GPU 作业超时挂起(SSPM DVFS 频率切换竞态),可尝试 `max` 锁定最高频率。
 
 ## 交付物
 
