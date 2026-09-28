@@ -7,20 +7,34 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build python3-pip clang llvm-dev \
-            libclang-dev spirv-tools glslang-tools rustc cargo libdrm-dev wget unzip git
+          sudo apt-get install -y \
+            ninja-build python3-pip python3-venv \
+            clang llvm-dev libclang-dev \
+            spirv-tools glslang-tools \
+            rustc cargo libdrm-dev \
+            wget unzip git patch
+
+      - name: Upgrade Meson (Fix version error)
+        run: |
+          pip3 install "meson>=1.4.0"
+          # 确保使用新安装的 meson
+          export PATH=$HOME/.local/bin:$PATH
+          meson --version
 
       - name: Setup Rust Android target
         run: rustup target add aarch64-linux-android
 
-      - name: Build Driver
+      - name: Build Driver (Run build.sh)
         run: |
           chmod +x build.sh
+          # 确保 PATH 包含新版 meson
+          export PATH=$HOME/.local/bin:$PATH
           bash build.sh
 
       - name: Upload Artifact
