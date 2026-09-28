@@ -1,0 +1,31 @@
+name: Build PanVK MTK Driver
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build python3-pip clang llvm-dev \
+            libclang-dev spirv-tools glslang-tools rustc cargo libdrm-dev wget unzip git
+
+      - name: Setup Rust Android target
+        run: rustup target add aarch64-linux-android
+
+      - name: Build Driver
+        run: |
+          chmod +x build.sh
+          bash build.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulkan-mali-mt6895
+          path: driver/vulkan.mali.so
+          retention-days: 7
