@@ -20,7 +20,10 @@ jobs:
             rustc cargo libdrm-dev \
             wget unzip git patch \
             libclc-19-dev \
-            python3-mako python3-yaml python3-packaging
+            python3-mako python3-yaml python3-packaging \
+            libllvmspirvlib-dev \
+            libudev-dev \
+            libdisplay-info-dev
 
       - name: Upgrade Meson (Fix version error)
         run: |
@@ -39,7 +42,7 @@ jobs:
           
           export PATH=$HOME/.local/bin:$PATH
           
-          # 【关键修复】强制使用 Clang 编译器，避免 GCC 在 x86 上对 ARM 内置函数的链接错误
+          # 强制使用 Clang 编译器
           export CC=clang
           export CXX=clang++
           
