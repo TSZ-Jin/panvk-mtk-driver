@@ -31,8 +31,14 @@ jobs:
           export PATH=$HOME/.local/bin:$PATH
           meson --version
 
-      - name: Setup Rust Android target
-        run: rustup target add aarch64-linux-android
+      - name: Setup Rust and bindgen
+        run: |
+          # 添加安卓交叉编译目标
+          rustup target add aarch64-linux-android
+          # 安装 bindgen 工具 (Mesa Rust 绑定生成必需)
+          cargo install bindgen-cli
+          # 确保 cargo 安装的二进制文件在 PATH 中
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build Driver (Run build.sh)
         run: |
