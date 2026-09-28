@@ -18,12 +18,12 @@ jobs:
             clang llvm-dev libclang-dev \
             spirv-tools glslang-tools \
             rustc cargo libdrm-dev \
-            wget unzip git patch
+            wget unzip git patch \
+            libclc-dev
 
       - name: Upgrade Meson (Fix version error)
         run: |
           pip3 install "meson>=1.4.0"
-          # 确保使用新安装的 meson
           export PATH=$HOME/.local/bin:$PATH
           meson --version
 
@@ -33,7 +33,6 @@ jobs:
       - name: Build Driver (Run build.sh)
         run: |
           chmod +x build.sh
-          # 确保 PATH 包含新版 meson
           export PATH=$HOME/.local/bin:$PATH
           bash build.sh
 
