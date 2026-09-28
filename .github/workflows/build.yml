@@ -38,6 +38,11 @@ jobs:
           sed -i 's/libclc-dev/libclc-19-dev/g' build.sh
           
           export PATH=$HOME/.local/bin:$PATH
+          
+          # 【关键修复】强制使用 Clang 编译器，避免 GCC 在 x86 上对 ARM 内置函数的链接错误
+          export CC=clang
+          export CXX=clang++
+          
           bash build.sh
 
       - name: Upload Artifact
