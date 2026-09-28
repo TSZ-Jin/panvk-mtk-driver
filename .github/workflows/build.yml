@@ -19,7 +19,7 @@ jobs:
             spirv-tools glslang-tools \
             rustc cargo libdrm-dev \
             wget unzip git patch \
-            libclc-dev
+            libclc-19-dev
 
       - name: Upgrade Meson (Fix version error)
         run: |
@@ -33,6 +33,9 @@ jobs:
       - name: Build Driver (Run build.sh)
         run: |
           chmod +x build.sh
+          # 自动修改 build.sh 内部的旧包名，防止脚本运行时报错
+          sed -i 's/libclc-dev/libclc-19-dev/g' build.sh
+          
           export PATH=$HOME/.local/bin:$PATH
           bash build.sh
 
