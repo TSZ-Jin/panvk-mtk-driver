@@ -33,17 +33,23 @@ jobs:
 
       - name: Setup Rust and bindgen
         run: |
-          # 添加安卓交叉编译目标
           rustup target add aarch64-linux-android
-          # 安装 bindgen 工具 (Mesa Rust 绑定生成必需)
           cargo install bindgen-cli
-          # 确保 cargo 安装的二进制文件在 PATH 中
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Build Driver (Run build.sh)
+      - name: Build Driver (Run build.sh with fix)
         run: |
           chmod +x build.sh
-          # 自动修改 build.sh 内部的旧包名，防止脚本运行时报错
+          
+          # 【关键修复】自动修改 build.sh，在应用补丁后复制缺失的 panvk_drm_stub.c 文件
+          # 假设文件在仓库根目录或 driver 目录下
+          REPO_ROOT=${{ github.workspace }}
+          
+          # 在 build.sh 的 'git apply' 行之后插入复制命令
+          # 这样当 build.sh 克隆并打完补丁后，会自动把文件复制过去
+          sed -i "/git apply.*panvk_mtk.patch/a \cp ${REPO_ROOT}/panvk_drm_stub.c ~/panvk-mtk/mesa/src/panfrost/vulkan/ 2>/dev/null || cp ${REPO_ROOT}/driver/panvk_drm_stub.c ~/panvk-mtk/mesa/src/panfrost/vulkan/ 2>/dev/null || echo 'Warning: Stub file not found, build may fail'" build.sh
+          
+          # 自动修改 build.sh 内部的旧包名
           sed -i 's/libclc-dev/libclc-19-dev/g' build.sh
           
           export PATH=$HOME/.local/bin:$PATH
