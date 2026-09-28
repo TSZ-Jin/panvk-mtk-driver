@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# panvk-mtk-driver 一键构建脚本
+# panvk-mtk-driver 一键构建脚本 (已修复 panvk_drm_stub.c 缺失问题)
 #
 # 功能: 克隆基础 Mesa 源码 -> 应用补丁 -> 构建离线编译器 -> 构建 Android
 #       Vulkan HAL (libvulkan_panfrost.so) -> 产出 vulkan.mali.so
@@ -63,8 +63,8 @@ if [ ! -d "$WORKDIR/mesa/.git" ]; then
 fi
 cd "$WORKDIR/mesa"
 git checkout "$MESA_COMMIT" 2>/dev/null || git fetch origin && git checkout "$MESA_COMMIT"
+
 if ! git apply --check "$PATCH" 2>/dev/null; then
-  # 补丁可能已应用, 检查后再决定
   if git apply --reverse --check "$PATCH" 2>/dev/null; then
     echo "    补丁已应用, 跳过"
   else
@@ -75,6 +75,26 @@ else
   git apply "$PATCH"
   echo "    补丁已应用"
 fi
+
+# --- 🌟 自动修复 Mesa 源码兼容性问题 (针对 panvk_drm_stub.c 缺失) 🌟 ---
+echo "==> [3.5/6] 检查并修复 panvk_drm_stub.c 兼容性问题"
+VULKAN_DIR="src/panfrost/vulkan"
+MESON_BUILD="$VULKAN_DIR/meson.build"
+
+if [ ! -f "$VULKAN_DIR/panvk_drm_stub.c" ]; then
+  echo "    警告: panvk_drm_stub.c 不存在，尝试自动修复 meson.build..."
+  if [ -f "$VULKAN_DIR/panvk_stub.c" ]; then
+    echo "    -> 发现 panvk_stub.c，将引用替换为 panvk_stub.c"
+    sed -i 's/panvk_drm_stub\.c/panvk_stub.c/g' "$MESON_BUILD"
+  else
+    echo "    -> 未发现替代文件，直接从 meson.build 中移除对该文件的引用"
+    sed -i '/panvk_drm_stub\.c/d' "$MESON_BUILD"
+  fi
+  echo "    修复完成！"
+else
+  echo "    panvk_drm_stub.c 存在，无需修复。"
+fi
+# --------------------------------------------------------------------------
 
 # --- 4. 离线编译器 (mesa_clc / panfrost_compile) ----------------------------
 echo "==> [4/6] 构建离线编译器"
@@ -175,9 +195,18 @@ meson compile -C "$BUILD_DIR"
 echo "==> [6/6] 产出 vulkan.mali.so"
 SO="$WORKDIR/mesa/$BUILD_DIR/src/panfrost/vulkan/libvulkan_panfrost.so"
 mkdir -p "$OUT_DIR"
-cp "$SO" "$OUT_DIR/vulkan.mali.so"
-patchelf --set-soname vulkan.mali.so "$OUT_DIR/vulkan.mali.so"
-ls -la "$OUT_DIR/vulkan.mali.so"
-md5sum "$OUT_DIR/vulkan.mali.so"
-echo
-echo "构建完成: $OUT_DIR/vulkan.mali.so"
+
+if [ -f "$SO" ]; then
+  cp "$SO" "$OUT_DIR/vulkan.mali.so"
+  # 尝试使用 patchelf 修改 soname (如果系统没有 patchelf 则忽略此步，不影响核心功能)
+  if command -v patchelf &> /dev/null; then
+    patchelf --set-soname vulkan.mali.so "$OUT_DIR/vulkan.mali.so" || true
+  fi
+  ls -la "$OUT_DIR/vulkan.mali.so"
+  md5sum "$OUT_DIR/vulkan.mali.so"
+  echo
+  echo "🎉 构建成功完成: $OUT_DIR/vulkan.mali.so"
+else
+  echo "❌ 错误: 未找到编译产物 $SO"
+  exit 1
+fi
