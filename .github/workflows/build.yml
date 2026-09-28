@@ -21,7 +21,7 @@ jobs:
             wget unzip git patch \
             libclc-19-dev \
             python3-mako python3-yaml python3-packaging \
-            libllvmspirvlib-dev \
+            libllvmspirvlib-18-dev \
             libudev-dev \
             libdisplay-info-dev
 
